@@ -57,11 +57,13 @@ trait RouterTrait
      * @param string|callable $handler
      * @param null|string
      */
-    protected function addRoute(string $method, string $route, $handler, string $name = null): void
+    public function addRoute(string $method, string $route, $handler, string $name = null): void
     {
         if ($route == "/") {
             $this->addRoute($method, "", $handler, $name);
         }
+
+        $route = (!$this->group ? $route : "/{$this->group}{$route}");
 
         preg_match_all("~\{\s* ([a-zA-Z_][a-zA-Z0-9_-]*) \}~x", $route, $keys, PREG_SET_ORDER);
         $routeDiff = array_values(array_diff(explode("/", $this->patch), explode("/", $route)));
@@ -71,6 +73,7 @@ trait RouterTrait
 
         $this->formSpoofing();
         $offset = ($this->group ? 1 : 0);
+
         foreach ($keys as $key) {
             $this->data[$key[1]] = ($routeDiff[$offset++] ?? null);
         }
@@ -83,11 +86,10 @@ trait RouterTrait
                             $this->data[$p2[1]] = ((!empty($Epatch[$k])) ? $Epatch[$k] : '');
                         }
                     }
-                }       
+                }
             }
         }
 
-        $route = (!$this->group ? $route : "/{$this->group}{$route}");
         $data = $this->data;
         $namespace = $this->namespace;
         $router = function () use ($method, $handler, $data, $route, $name, $namespace) {
@@ -100,7 +102,6 @@ trait RouterTrait
                 "data" => $data
             ];
         };
-
         $route = preg_replace('~{([^}]*)}~', "([^/]+)", $route);
         $this->routes[$method][$route] = $router();
     }

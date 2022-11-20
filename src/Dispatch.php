@@ -25,13 +25,36 @@ abstract class Dispatch
     protected $namespace;
 
     /** @var null|string */
-    protected $group;
+    public $group;
 
     /** @var null|array */
     protected $data;
 
     /** @var int */
     protected $error;
+
+
+    /**
+     * @var ?string
+     */
+    protected $host;
+
+    /**
+     * @var ?string
+     */
+    protected $name;
+
+    /**
+     * @var ?int
+     */
+    protected $port;
+
+    /**
+     * @var ?string
+     */
+    protected $scheme;
+
+
 
     /** @const int Bad Request */
     public const BAD_REQUEST = 400;
@@ -86,6 +109,41 @@ abstract class Dispatch
         $this->group = ($group ? str_replace("/", "", $group) : null);
         return $this;
     }
+    
+    public function agroup(?string $prefix = null, string $route, callable $group)
+    {
+        if(!empty($prefix)){
+            $this->group = ($this->group ? $this->group.'/' : null).($route ? str_replace("/", "", $route) : null);
+        }else{
+            $this->group = ($route ? str_replace("/", "", $route) : null);
+        }
+        $group($this);
+        //$this->addRoute("GET", $prefix, $group);
+        //$this->group = null;
+        return $this;
+    }
+
+    /**
+     * Create a route group with shared attributes.
+     *
+     * @param  array  $attributes
+     * @param  \Closure|string  $routes
+     * @return void
+     */
+    public static function group_api(array $attributes, $routes)
+    {
+        //$this->updateGroupStack($attributes);
+
+        // Once we have updated the group stack, we'll load the provided routes and
+        // merge in the group's attributes when the routes are created. After we
+        // have created the routes, we will pop the attributes off the stack.
+        //$this->loadRoutes($routes);
+
+        //array_pop($this->groupStack);
+    }
+
+
+
 
     /**
      * @return null|array
@@ -189,4 +247,76 @@ abstract class Dispatch
         $this->data = [];
         return;
     }
+
+
+    public function getHost(): ?string
+    {
+        return $this->host;
+    }
+
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    public function getPort(): ?int
+    {
+        return $this->port;
+    }
+
+    public function getScheme(): ?string
+    {
+        return $this->scheme;
+    }
+
+    public function setHost(string $host)
+    {
+        $this->host = $host;
+        return $this->checkAndReturnSelf();
+    }
+
+    public function setName(string $name)
+    {
+        $this->name = $name;
+        return $this->checkAndReturnSelf();
+    }
+
+    public function setPort(int $port)
+    {
+        $this->port = $port;
+        return $this->checkAndReturnSelf();
+    }
+
+    public function setScheme(?string $scheme)
+    {
+        $this->scheme = $scheme;
+
+        die;
+        return $this->checkAndReturnSelf();
+    }
+
+    private function checkAndReturnSelf()
+    {
+        return $this;
+    }
+
+    protected function isExtraConditionMatch($route,  $request): bool
+    {
+        // check for scheme condition
+        $scheme = $route->getScheme();
+        if ($scheme !== null && $scheme !== $request->getUri()->getScheme()) {
+            return false;
+        }
+
+        // check for domain condition
+        $host = $route->getHost();
+        if ($host !== null && $host !== $request->getUri()->getHost()) {
+            return false;
+        }
+
+        // check for port condition
+        $port = $route->getPort();
+        return !($port !== null && $port !== $request->getUri()->getPort());
+    }
+
 }
