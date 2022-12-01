@@ -110,14 +110,26 @@ abstract class Dispatch
         return $this;
     }
     
-    public function agroup(?string $prefix = null, string $route, callable $group)
+    /*
+    public function map(string $method, string $path, $handler, string $name = null)
     {
+        $path  = sprintf('/%s', ltrim($path, '/'));
+        $this->addRoute($method, $path, $handler, $name);
+        return $this;
+    }
+    */
+    
+    public function map(?string $prefix = null, string $route, callable $group)
+    {
+        $groups = $this->group;
         if(!empty($prefix)){
-            $this->group = ($this->group ? $this->group.'/' : null).($route ? str_replace("/", "", $route) : null);
+            $this->group = ($prefix ? $prefix.'/' : null).($route ? str_replace("/", "", $route) : null);
         }else{
             $this->group = ($route ? str_replace("/", "", $route) : null);
         }
         $group($this);
+
+        $this->group = $groups;
         //$this->addRoute("GET", $prefix, $group);
         //$this->group = null;
         return $this;
@@ -290,8 +302,6 @@ abstract class Dispatch
     public function setScheme(?string $scheme)
     {
         $this->scheme = $scheme;
-
-        die;
         return $this->checkAndReturnSelf();
     }
 
@@ -300,23 +310,25 @@ abstract class Dispatch
         return $this;
     }
 
-    protected function isExtraConditionMatch($route,  $request): bool
+    protected function isExtraConditionMatch(): bool
     {
         // check for scheme condition
-        $scheme = $route->getScheme();
-        if ($scheme !== null && $scheme !== $request->getUri()->getScheme()) {
+        $scheme = $this->getScheme();
+        if ($scheme !== null && $scheme !== $this->getUri()->getScheme()) {
             return false;
         }
-
         // check for domain condition
-        $host = $route->getHost();
-        if ($host !== null && $host !== $request->getUri()->getHost()) {
+        $host = $this->getHost();
+        if ($host !== null && $host !== $this->getUri()->getHost()) {
             return false;
         }
-
         // check for port condition
-        $port = $route->getPort();
-        return !($port !== null && $port !== $request->getUri()->getPort());
+        $port = $this->getPort();
+        return !($port !== null && $port !== $this->getUri()->getPort());
+    }
+
+    private function getUri(){
+        return (new Request);
     }
 
 }

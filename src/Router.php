@@ -76,12 +76,6 @@ class Router extends Dispatch
         return $this;
     }
     
-    public function map(string $method, string $path, $handler, string $name = null)
-    {
-        $path  = sprintf('/%s', ltrim($path, '/'));
-        $this->addRoute($method, $path, $handler, $name);
-        return $this;
-    }
 
 
 

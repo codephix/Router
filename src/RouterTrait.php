@@ -59,6 +59,15 @@ trait RouterTrait
      */
     public function addRoute(string $method, string $route, $handler, string $name = null): void
     {
+
+        if (false === $this->isExtraConditionMatch()) {
+            return;
+        }
+
+        if (false === $this->isExtraConditionMatch($route)) {
+            return;
+        }
+
         if ($route == "/") {
             $this->addRoute($method, "", $handler, $name);
         }
