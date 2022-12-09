@@ -119,7 +119,7 @@ abstract class Dispatch
     }
     */
     
-    public function map(?string $prefix = null, string $route, callable $group)
+    public function map(?string $prefix, string $route, callable $group)
     {
         $groups = $this->group;
         if(!empty($prefix)){
