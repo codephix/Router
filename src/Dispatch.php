@@ -127,6 +127,9 @@ abstract class Dispatch
         }else{
             $this->group = ($route ? str_replace("/", "", $route) : null);
         }
+
+        $this->group = str_replace("//","/",$this->group);
+        
         $group($this);
 
         $this->group = $groups;
