@@ -68,6 +68,44 @@ abstract class Dispatch
     /** @const int Not Implemented */
     public const NOT_IMPLEMENTED = 501;
 
+    public const NOT_AUTHORITATIVE = 203;
+
+    /**
+     * The route controller array.
+     *
+     * @var array
+     */
+    public $controller;
+
+    /**
+     * The route middleware array.
+     *
+     * @var array
+     */
+    public $middleware;
+
+    /**
+     * The route action array.
+     *
+     * @var array
+     */
+    public $action;
+    
+    /**
+     * The fields that implicit binding should use for a given parameter.
+     *
+     * @var array
+     */
+    protected $bindingFields = [];
+
+
+    /**
+     * All of the verbs supported by the router.
+     *
+     * @var string[]
+     */
+    public $verbs = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
+
     /**
      * Dispatch constructor.
      *
@@ -118,6 +156,56 @@ abstract class Dispatch
         return $this;
     }
     */
+
+
+
+    /**
+     * Register a new route responding to all verbs.
+     *
+     * @param  string  $uri
+     * @param  array|string|callable|null  $action
+     * @return \Illuminate\Routing\Route
+     */
+    public function any($uri, $action = null)
+    {
+        return $this->addRoute($this->verbs, $uri, $action);
+    }
+
+    public function match(?array $methods, string $uri, callable $action = null){
+        return $this->addRoute(array_map('strtoupper', (array) $methods), $uri, $action);
+    }
+
+    public function controller(string $controller, callable $action = null){
+
+        $this->controller = $controller;
+
+        $groups = $this->group;
+        
+        $action($this);
+
+        $this->group = $groups;
+
+        $this->controller = '';
+    }
+
+    public function middleware($middleware, callable $action = null, ?string $namespace = ''){
+
+        if(empty($namespace)){
+            $namespace = $this->namespace;
+        }
+        $this->middleware = [
+            'middleware' => $middleware,
+            'namespace' => $namespace,
+        ];
+
+        $groups = $this->group;
+        
+        $action($this);
+
+        $this->group = $groups;
+
+        $this->middleware = '';
+    }
     
     public function map(?string $prefix, string $route, callable $group)
     {
@@ -136,6 +224,71 @@ abstract class Dispatch
         //$this->addRoute("GET", $prefix, $group);
         //$this->group = null;
         return $this;
+    }
+
+    /**
+     * Get or set the domain for the route.
+     *
+     * @param  string|null  $domain
+     * @return $this|string|null
+     */
+    public function domain(?string $domain, callable $group)
+    {
+        if (is_null($domain)) {
+            return $this->getDomain();
+        }
+
+        $parsed = RouteUri::parse($domain);
+
+        $this->action['domain'] = $parsed->uri;
+
+        $this->bindingFields = array_merge(
+            $this->bindingFields, $parsed->bindingFields
+        );
+
+        $groups = $this->group;
+        
+        $group($this);
+
+        $this->group = $groups;
+
+        $this->action['domain'] = '';
+
+
+        //$this->addRoute("GET", $prefix, $group);
+        //$this->group = null;
+        return $this;
+    }
+
+    public function removeDomain(callable $group){
+
+        $groups = $this->group;
+
+
+        $group($this);
+        $this->action['domain'] = '';
+
+        $this->group = $groups;
+        //$this->addRoute("GET", $prefix, $group);
+        //$this->group = null;
+        return $this;
+    }
+
+    public function getAcessDomain()
+    {
+        return !empty($_SERVER['HTTP_HOST'])
+                ? str_replace(['http://', 'https://'], '', $_SERVER['HTTP_HOST']) : null;
+    }
+
+    /**
+     * Get the domain defined for the route.
+     *
+     * @return string|null
+     */
+    public function getDomain()
+    {
+        return isset($this->action['domain'])
+                ? str_replace(['http://', 'https://'], '', $this->action['domain']) : null;
     }
 
     /**
@@ -201,10 +354,48 @@ abstract class Dispatch
      */
     private function execute()
     {
+        
         if ($this->route) {
+
+            if($this->getDomain() && $this->getDomain() !== $this->getAcessDomain()){
+                $this->error = self::NOT_FOUND;
+                return false;
+            }
+
             if (is_callable($this->route['handler'])) {
                 call_user_func($this->route['handler'], ($this->route['data'] ?? []));
                 return true;
+            }
+            
+            if($this->route['middleware']){
+
+                $middleware = [
+                    "handler" => $this->handler($this->route['middleware']['middleware'], $this->route['middleware']['namespace']),
+                    "action" => $this->action($this->route['middleware']['middleware']),
+                ];
+
+                if (is_callable($middleware['handler'])) {
+                    call_user_func($middleware['handler'], ($this->route['data'] ?? []));
+                    return true;
+                }
+                
+                $controller = $middleware['handler'];
+                $method = $middleware['action'];
+
+                if (class_exists($controller)) {
+                    $newController = new $controller($this);
+                    if (method_exists($controller, $method)) {
+                        $newController->$method(($this->route['data'] ?? []));
+                    }else{
+                        $this->error = self::METHOD_NOT_ALLOWED;
+                        return false;
+                    }
+                }else{
+                    $this->error = self::BAD_REQUEST;
+                    return false;
+                }
+                //$middleware = $this->handler($this->route['middleware'], $this->route[]);
+
             }
 
             $controller = $this->route['handler'];
@@ -224,7 +415,6 @@ abstract class Dispatch
             $this->error = self::BAD_REQUEST;
             return false;
         }
-
         $this->error = self::NOT_FOUND;
         return false;
     }

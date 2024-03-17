@@ -10,6 +10,8 @@ namespace CodePhix\Router;
  */
 class Router extends Dispatch
 {
+
+
     /**
      * Router constructor.
      *
@@ -73,6 +75,29 @@ class Router extends Dispatch
     public function delete(string $route, $handler, string $name = null)
     {
         $this->addRoute("DELETE", $route, $handler, $name);
+        return $this;
+    }
+
+    /**
+     * @param string $route
+     * @param $handler
+     * @param string|null $name
+     */
+    public function options(string $route, $handler, string $name = null)
+    {
+        $this->addRoute("OPTIONS", $route, $handler, $name);
+        return $this;
+    }
+    
+
+    /**
+     * @param string $route
+     * @param $handler
+     * @param string|null $name
+     */
+    public function head(string $route, $handler, string $name = null)
+    {
+        $this->addRoute("HEAD", $route, $handler, $name);
         return $this;
     }
     
