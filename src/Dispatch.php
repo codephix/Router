@@ -171,7 +171,7 @@ abstract class Dispatch
         return $this->addRoute($this->verbs, $uri, $action);
     }
 
-    public function match(?array $methods, string $uri, callable $action = null){
+    public function match(?array $methods, string $uri, callable|string $action = null){
         return $this->addRoute(array_map('strtoupper', (array) $methods), $uri, $action);
     }
 
@@ -241,6 +241,7 @@ abstract class Dispatch
         $parsed = RouteUri::parse($domain);
 
         $this->action['domain'] = $parsed->uri;
+
 
         $this->bindingFields = array_merge(
             $this->bindingFields, $parsed->bindingFields
@@ -356,8 +357,7 @@ abstract class Dispatch
     {
         
         if ($this->route) {
-
-            if($this->getDomain() && $this->getDomain() !== $this->getAcessDomain()){
+            if(!empty($this->route['domain']['domain']) && $this->route['domain']['domain'] !== $this->getAcessDomain()){
                 $this->error = self::NOT_FOUND;
                 return false;
             }
@@ -376,7 +376,6 @@ abstract class Dispatch
 
                 if (is_callable($middleware['handler'])) {
                     call_user_func($middleware['handler'], ($this->route['data'] ?? []));
-                    return true;
                 }
                 
                 $controller = $middleware['handler'];
@@ -407,7 +406,6 @@ abstract class Dispatch
                     $newController->$method(($this->route['data'] ?? []));
                     return true;
                 }
-
                 $this->error = self::METHOD_NOT_ALLOWED;
                 return false;
             }
