@@ -232,15 +232,26 @@ abstract class Dispatch
      * @param  string|null  $domain
      * @return $this|string|null
      */
-    public function domain(?string $domain, callable $group)
+    public function domain(string|array $domains, callable $group)
     {
-        if (is_null($domain)) {
+        if (is_null($domains)) {
             return $this->getDomain();
         }
 
-        $parsed = RouteUri::parse($domain);
+        if(empty($this->action['domain'])){
+            $this->action['domain'] = [];
+        }
 
-        $this->action['domain'] = $parsed->uri;
+        if(is_array($domains)){
+            foreach($domains as $domain){
+
+                $parsed = RouteUri::parse($domain);
+                $this->action['domain'][] = $parsed->uri;
+            }
+        }else{
+            $parsed = RouteUri::parse($domains);
+            $this->action['domain'][] = $parsed->uri;
+        }
 
 
         $this->bindingFields = array_merge(
@@ -357,9 +368,18 @@ abstract class Dispatch
     {
         
         if ($this->route) {
-            if(!empty($this->route['domain']['domain']) && $this->route['domain']['domain'] !== $this->getAcessDomain()){
-                $this->error = self::NOT_FOUND;
-                return false;
+            if(!empty($this->route['domain']['domain'])){
+                $allow = false;
+                foreach($this->route['domain']['domain'] as $domain){
+                    if($domain == $this->getAcessDomain()){
+                        $allow = true;
+                    }
+                }
+                if(!$allow){
+                    $this->error = self::NOT_FOUND;
+                    return false;
+                }
+             
             }
 
             if (is_callable($this->route['handler'])) {
