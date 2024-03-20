@@ -54,18 +54,11 @@ trait RouterTrait
     /**
      * @param string $method
      * @param string $route
-     * @param string|callable $handler
+     * @param string|callable|object $handler
      * @param null|string
      */
     public function addRoute(string|array $methods, string $route, $handler, string $name = null): void
     {
-
-        if(!empty($this->controller) && is_string($handler)){
-            $ex = explode($this->separator,$handler);
-            if(!isset($ex[1])){
-                $handler = $this->controller.$this->separator.$handler;
-            }
-        }
 
         if(is_array($methods)){
             foreach($methods as $method){
@@ -114,6 +107,15 @@ trait RouterTrait
                 }
             }
         }
+
+        if(!empty($this->controller)){
+            if( is_string($this->controller) && is_string($handler)){
+                $ex = explode($this->separator,$handler);
+                if(!isset($ex[1])){
+                    $handler = $this->controller.$this->separator.$handler;
+                }
+            }
+        }
         
         $data = $this->data;
         $namespace = $this->namespace;
@@ -138,7 +140,7 @@ trait RouterTrait
     /**
      * @param $handler
      * @param $namespace
-     * @return string|callable
+     * @return string|callable|object
      */
     private function handler($handler, $namespace)
     {
