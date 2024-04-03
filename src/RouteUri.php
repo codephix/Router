@@ -19,16 +19,27 @@ class RouteUri
     public $bindingFields = [];
 
     /**
+     * The route URI.
+     *
+     * @var string
+     */
+    public static $domain;
+
+    /**
      * Create a new route URI instance.
      *
      * @param  string  $uri
      * @param  array  $bindingFields
      * @return void
      */
-    public function __construct(string $uri, array $bindingFields = [])
+    public function __construct(string $uri, ?array $bindingFields = [])
     {
         $this->uri = $uri;
         $this->bindingFields = $bindingFields;
+
+
+        self::$domain =  !empty($_SERVER['HTTP_HOST'])
+                ? str_replace(['http://', 'https://'], '', $_SERVER['HTTP_HOST']) : null;
     }
 
     /**
@@ -39,22 +50,34 @@ class RouteUri
      */
     public static function parse($uri)
     {
-        preg_match_all('/\{([\w\:]+?)\??\}/', $uri, $matches);
 
         $bindingFields = [];
+        
+        preg_match_all("~\{\s* ([a-zA-Z_][a-zA-Z0-9_-]*) \}~x", $uri, $keys, PREG_SET_ORDER);
+        if(!empty($keys)){
 
-        foreach ($matches[0] as $match) {
-            if (! str_contains($match, ':')) {
-                continue;
+            $routeDiff = array_values(array_diff(explode("/", self::$domain), explode("/", $uri)));
+
+            $route = str_replace('//','/',$uri);
+
+            $Epatch = explode(".", self::$domain);
+            $Eroute = explode(".", $route);
+
+            $offset = 0;
+
+            foreach ($keys as $key) {
+                $bindingFields[$key[1]] = ($routeDiff[$offset++] ?? null);
             }
-
-            $segments = explode(':', trim($match, '{}?'));
-
-            $bindingFields[$segments[0]] = $segments[1];
-
-            $uri = str_contains($match, '?')
-                ? str_replace($match, '{'.$segments[0].'?}', $uri)
-                : str_replace($match, '{'.$segments[0].'}', $uri);
+            
+            foreach($keys as $key2 => $p2){
+                if(!empty($Eroute)){
+                    foreach($Eroute as $k => $p){
+                        if($p2[0] == $p){
+                            $bindingFields[$p2[1]] = ((!empty($Epatch[$k])) ? $Epatch[$k] : '');
+                        }
+                    }
+                }
+            }
         }
 
         return new static($uri, $bindingFields);

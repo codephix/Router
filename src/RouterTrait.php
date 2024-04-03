@@ -60,6 +60,7 @@ trait RouterTrait
     public function addRoute(string|array $methods, string $route, $handler, string $name = null): void
     {
 
+
         if(!empty($this->controller) && is_string($handler)){
             $ex = explode($this->separator,$handler);
             if(!isset($ex[1])){
@@ -87,11 +88,20 @@ trait RouterTrait
             $this->addRoute($method, "", $handler, $name);
         }
 
+        if(!empty($route) && is_string($route)){
+            $inicio = mb_substr($route, 0, 1, 'UTF-8');
+            if(strlen($route) > 1 && $inicio !== '/'){
+                $route = '/'.$route;
+            }
+        }
+
         $route = (!$this->group ? $route : "/{$this->group}{$route}");
+        // $route = str_replace('//','/',$route);
 
         preg_match_all("~\{\s* ([a-zA-Z_][a-zA-Z0-9_-]*) \}~x", $route, $keys, PREG_SET_ORDER);
         $routeDiff = array_values(array_diff(explode("/", $this->patch), explode("/", $route)));
 
+        $route = str_replace('//','/',$route);
 
         $Epatch = explode("/", $this->patch);
         $Eroute = explode("/", $route);
@@ -118,6 +128,12 @@ trait RouterTrait
         $data = $this->data;
         $namespace = $this->namespace;
 
+        if(!empty($this->bindingFields)){
+            $data = array_merge(
+                $data, $this->bindingFields
+            );
+        }
+
         $router = function () use ($method, $handler, $data, $route, $name, $namespace) {
             return [
                 "route" => $route,
@@ -126,7 +142,7 @@ trait RouterTrait
                 "handler" => $this->handler($handler, $namespace),
                 "action" => $this->action($handler),
                 "data" => $data,
-                "domain" => $this->action,
+                "domain" => $this->action['domain'],
                 "controller" => $this->controller,
                 "middleware" => $this->middleware,
             ];

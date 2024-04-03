@@ -2,13 +2,17 @@
 
 namespace CodePhix\Router;
 
+//use App\Core\Reflector;
+use CodePhix\Router\Reflector;
+use Closure;
+
 /**
  * Class CodePhix Dispatch
  *
  * @author Robson V. Leite <https://github.com/robsonvleite>
  * @package CodePhix\Router
  */
-abstract class Dispatch
+class Dispatch
 {
     use RouterTrait;
 
@@ -53,6 +57,9 @@ abstract class Dispatch
      * @var ?string
      */
     protected $scheme;
+
+
+    protected $attributes = [];
 
 
 
@@ -118,6 +125,7 @@ abstract class Dispatch
         $this->patch = (filter_input(INPUT_GET, "route", FILTER_DEFAULT) ?? "/");
         $this->separator = ($separator ?? ":");
         $this->httpMethod = $_SERVER['REQUEST_METHOD'];
+        $this->action['domain'] = [];
     }
 
     /**
@@ -139,12 +147,40 @@ abstract class Dispatch
     }
 
     /**
-     * @param null|string $group
+     * @param string|array|null $group
      * @return Dispatch
      */
-    public function group(?string $group): Dispatch
+    public function group(string|array|null $group, ?callable $callable = null): Dispatch
     {
-        $this->group = ($group ? str_replace("/", "", $group) : null);
+
+        if(is_array($group)){
+            if(!empty($group['prefix']) && is_string($group['prefix'])){
+                $group = $group['prefix'];
+            }
+        }
+
+        if(!empty($group) && is_string($group)){
+            $inicio = mb_substr($group, 0, 1, 'UTF-8');
+            if(strlen($group) > 1 && $inicio !== '/'){
+                $group = '/'.$group;
+            }
+        }
+
+        // $this->group = ($group ? str_replace("/", "", $group) : null);
+
+        if(is_callable($callable)){
+            $groupAtual = $this->group;
+            $this->group .= '/'.($group ? $group : null);
+
+            $callable($this);
+
+            $this->group = $groupAtual;
+            unset($groupAtual);
+            return $this;
+        }
+
+        $this->group = ($group ? $group : null);
+
         return $this;
     }
     
@@ -163,19 +199,140 @@ abstract class Dispatch
      * Register a new route responding to all verbs.
      *
      * @param  string  $uri
-     * @param  array|string|callable|null  $action
+     * @param  array|string|callable|object|null  $action
      * @return \Illuminate\Routing\Route
      */
     public function any($uri, $action = null)
     {
         return $this->addRoute($this->verbs, $uri, $action);
     }
+ /**
+     * Compile the action into an array including the attributes.
+     *
+     * @param  \Closure|array|string|null  $action
+     * @return array
+     */
+    protected function compileAction($action)
+    {
+        if (is_null($action)) {
+            return $this->attributes;
+        }
 
-    public function match(?array $methods, string $uri, callable|string $action = null){
+        if (is_string($action) || $action instanceof Closure) {
+            $action = ['uses' => $action];
+        }
+
+        if (is_array($action) &&
+            // ! Arr::isAssoc($action) &&
+            Reflector::isCallable($action)) {
+            if (strncmp($action[0], '\\', 1)) {
+                $action[0] = '\\'.$action[0];
+            }
+            $action = [
+                'uses' => $action[0].'@'.$action[1],
+                'controller' => $action[0].'@'.$action[1],
+            ];
+        }
+
+        return array_merge($this->attributes, $action);
+    }
+
+    public function match(?array $methods, string $uri, callable|string|array $action = null){
+
+        // if (! is_array($action)) {
+        //     $action = array_merge($this->attributes, $action ? ['uses' => $action] : []);
+        // }
+
         return $this->addRoute(array_map('strtoupper', (array) $methods), $uri, $action);
     }
 
-    public function controller(string $controller, callable $action = null){
+
+    /**
+     * Register an array of resource controllers.
+     *
+     * @param  array  $resources
+     * @param  array  $options
+     * @return void
+     */
+    public function resources(array $resources, array $options = [])
+    {
+        foreach ($resources as $name => $controller) {
+            $this->resource($name, $controller, $options);
+        }
+    }
+
+    /**
+     * Route a resource to a controller.
+     *
+     * @param  string  $name
+     * @param  string  $controller
+     * @param  array  $options
+     */
+    public function resource($name, $controller, array $options = [])
+    {
+        if(!empty($options['only'])){
+            foreach($options['only'] as $only){
+                switch($only){
+                    case 'home':
+                        $this->addRoute("GET", $name, $controller.$this->separator.$only);
+                        break;
+                    case 'create':
+                        $this->addRoute(["GET","POST"], $name.'/'.$only, $controller.$this->separator.$only);
+                        break;
+                    case 'show':
+                        $this->addRoute(["GET"], $name.'/{uid}', $controller.$this->separator.$only);
+                        break;
+                    case 'edit':
+                        $this->addRoute(["PUT",'PATCH'], $name.'/{uid}/'.$only, $controller.$this->separator.$only);
+                        break;
+                    case 'destroy':
+                        $this->addRoute(['DELETE'], $name.'/{uid}', $controller.$this->separator.$only);
+                        break;
+                }
+            }
+        }
+        
+    }
+
+    /**
+     * Register an array of API resource controllers.
+     *
+     * @param  array  $resources
+     * @param  array  $options
+     * @return void
+     */
+    public function apiResources(array $resources, array $options = [])
+    {
+        foreach ($resources as $name => $controller) {
+            $this->apiResource($name, $controller, $options);
+        }
+    }
+
+    /**
+     * Route an API resource to a controller.
+     *
+     * @param  string  $name
+     * @param  string  $controller
+     * @param  array  $options
+     * @return \Illuminate\Routing\PendingResourceRegistration
+     */
+    public function apiResource($name, $controller, array $options = [])
+    {
+        $only = ['home','create','show','edit','update','destroy'];
+
+        if (isset($options['except'])) {
+            $only = array_diff($only, (array) $options['except']);
+        }
+
+        return $this->resource($name, $controller, array_merge([
+            'only' => $only,
+        ], $options));
+    }
+    
+
+    public function controller(string $controller, ?callable $action = null){
+
+        $this->controller = $controller;
 
         $ControllerAnterior = $this->controller;
 
@@ -184,26 +341,28 @@ abstract class Dispatch
            $controller = $this->namespace.'\\'.$controller;
         }
 
-        $this->controller = $controller;
 
         $groups = $this->group;
-        
-        $action($this);
+     
+        if(!is_null($action)){
+            $action($this);
+        }
 
         $this->group = $groups;
 
-        if(!empty($ControllerAnterior)){
-            $this->controller = $ControllerAnterior;
-        }else{
-            $this->controller = '';
-        }
+        // if(!empty($ControllerAnterior)){
+        //     $this->controller = $ControllerAnterior;
+        // }else{
+        //     $this->controller = '';
+        // }
+
+        $this->controller = '';
     }
 
-    public function middleware($middleware, callable $action = null, ?string $namespace = ''){
-
-        if(empty($namespace)){
-            $namespace = $this->namespace;
-        }
+    public function middleware(string|array $middleware, callable $action = null, ?string $namespace = ''){
+        // if(empty($namespace)){
+        //     $namespace = $this->namespace;
+        // }
         $this->middleware = [
             'middleware' => $middleware,
             'namespace' => $namespace,
@@ -211,20 +370,53 @@ abstract class Dispatch
 
         $groups = $this->group;
         
-        $action($this);
+        if(!is_null($action)){
+            $action($this);
+        }
 
         $this->group = $groups;
 
         $this->middleware = '';
     }
+
+    public function runMiddleware($middleware, $namespace){
+
+        $middleware = [
+            "handler" => $this->handler($middleware, $namespace),
+            "action" => $this->action($middleware),
+        ];
+
+        if (is_callable($middleware['handler'])) {
+            call_user_func($middleware['handler'], ($this->route['data'] ?? []));
+        }
+        
+        $controller = $middleware['handler'];
+        $method = $middleware['action'];
+        if (class_exists($controller)) {
+            /**
+             * @var \Closure $newController
+             */
+            $newController = new $controller($this);
+            if (method_exists($controller, $method)) {
+                $newController->$method(($this->route['data'] ?? []));
+            }else{
+                $this->error = self::METHOD_NOT_ALLOWED;
+                return true;
+            }
+        }else{
+            $this->error = self::BAD_REQUEST;
+            return true;
+        }
+    }
     
-    public function map(?string $prefix, string $route, callable $group)
+    public function map(?string $prefix, string $route = null, callable $group)
     {
         $groups = $this->group;
         if(!empty($prefix)){
             $this->group = ($prefix ? $prefix.'/' : null).($route ? str_replace("/", "", $route) : null);
         }else{
-            $this->group = ($route ? str_replace("/", "", $route) : null);
+            // $this->group = ($route ? str_replace("/", "", $route) : null);
+            $this->group = ($route ? $route : null);
         }
 
         $this->group = str_replace("//","/",$this->group);
@@ -232,8 +424,6 @@ abstract class Dispatch
         $group($this);
 
         $this->group = $groups;
-        //$this->addRoute("GET", $prefix, $group);
-        //$this->group = null;
         return $this;
     }
 
@@ -255,28 +445,32 @@ abstract class Dispatch
 
         if(is_array($domains)){
             foreach($domains as $domain){
-
                 $parsed = RouteUri::parse($domain);
                 $this->action['domain'][] = $parsed->uri;
+                if(!empty($parsed->bindingFields)){
+                    $this->bindingFields = array_merge(
+                        $this->bindingFields, $parsed->bindingFields
+                    );
+                }
             }
         }else{
             $parsed = RouteUri::parse($domains);
             $this->action['domain'][] = $parsed->uri;
+
+            $this->bindingFields = array_merge(
+                $this->bindingFields, $parsed->bindingFields
+            );
         }
 
-
-        $this->bindingFields = array_merge(
-            $this->bindingFields, $parsed->bindingFields
-        );
-
         $groups = $this->group;
-        
-        $group($this);
+
+        if(!is_null($group)){
+            $group($this);
+        }
 
         $this->group = $groups;
 
         $this->action['domain'] = '';
-
 
         //$this->addRoute("GET", $prefix, $group);
         //$this->group = null;
@@ -379,9 +573,10 @@ abstract class Dispatch
     {
         
         if ($this->route) {
-            if(!empty($this->route['domain']['domain'])){
+
+            if(!empty($this->route['domain'])){
                 $allow = false;
-                foreach($this->route['domain']['domain'] as $domain){
+                foreach($this->route['domain'] as $domain){
                     if($domain == $this->getAcessDomain()){
                         $allow = true;
                     }
@@ -390,42 +585,26 @@ abstract class Dispatch
                     $this->error = self::NOT_FOUND;
                     return false;
                 }
-             
             }
-
             if (is_callable($this->route['handler'])) {
                 call_user_func($this->route['handler'], ($this->route['data'] ?? []));
                 return true;
             }
             
             if($this->route['middleware']){
-
-                $middleware = [
-                    "handler" => $this->handler($this->route['middleware']['middleware'], $this->route['middleware']['namespace']),
-                    "action" => $this->action($this->route['middleware']['middleware']),
-                ];
-
-                if (is_callable($middleware['handler'])) {
-                    call_user_func($middleware['handler'], ($this->route['data'] ?? []));
-                }
-                
-                $controller = $middleware['handler'];
-                $method = $middleware['action'];
-
-                if (class_exists($controller)) {
-                    $newController = new $controller($this);
-                    if (method_exists($controller, $method)) {
-                        $newController->$method(($this->route['data'] ?? []));
-                    }else{
-                        $this->error = self::METHOD_NOT_ALLOWED;
-                        return false;
+                if(is_array($this->route['middleware']['middleware'])){
+                    foreach($this->route['middleware']['middleware'] as $middleware){
+                        $status = $this->runMiddleware($middleware, $this->route['middleware']['namespace']);
+                        if($status){
+                            return false;
+                        }
                     }
                 }else{
-                    $this->error = self::BAD_REQUEST;
-                    return false;
+                    $status = $this->runMiddleware($this->route['middleware']['middleware'], $this->route['middleware']['namespace']);
+                    if($status){
+                        return false;
+                    }
                 }
-                //$middleware = $this->handler($this->route['middleware'], $this->route[]);
-
             }
 
             $controller = $this->route['handler'];
