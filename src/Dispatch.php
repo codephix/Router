@@ -98,8 +98,6 @@ abstract class Dispatch
      */
     protected $bindingFields = [];
 
-    public $wheres;
-
 
     /**
      * All of the verbs supported by the router.
@@ -166,7 +164,7 @@ abstract class Dispatch
      *
      * @param  string  $uri
      * @param  array|string|callable|null  $action
-     * @return \CodePhix\Router\Route
+     * @return \Illuminate\Routing\Route
      */
     public function any($uri, $action = null)
     {
@@ -177,14 +175,14 @@ abstract class Dispatch
         return $this->addRoute(array_map('strtoupper', (array) $methods), $uri, $action);
     }
 
-    /**
-     * Register a new route responding to all verbs.
-     *
-     * @param  string  $uri
-     * @param  array|string|callable|null|object  $action
-     * @return \CodePhix\Router\Route
-     */
-    public function controller($controller, callable $action = null){
+    public function controller(string $controller, callable $action = null){
+
+        $ControllerAnterior = $this->controller;
+
+        $ex = explode('\\',$controller);
+        if(empty($ex[1])){
+           $controller = $this->namespace.'\\'.$controller;
+        }
 
         $this->controller = $controller;
 
@@ -194,7 +192,11 @@ abstract class Dispatch
 
         $this->group = $groups;
 
-        $this->controller = '';
+        if(!empty($ControllerAnterior)){
+            $this->controller = $ControllerAnterior;
+        }else{
+            $this->controller = '';
+        }
     }
 
     public function middleware($middleware, callable $action = null, ?string $namespace = ''){
@@ -238,7 +240,7 @@ abstract class Dispatch
     /**
      * Get or set the domain for the route.
      *
-     * @param  string|null|array  $domain
+     * @param  string|null  $domain
      * @return $this|string|null
      */
     public function domain(string|array $domains, callable $group)
@@ -246,8 +248,6 @@ abstract class Dispatch
         if (is_null($domains)) {
             return $this->getDomain();
         }
-
-        
 
         if(empty($this->action['domain'])){
             $this->action['domain'] = [];
@@ -263,14 +263,6 @@ abstract class Dispatch
             $parsed = RouteUri::parse($domains);
             $this->action['domain'][] = $parsed->uri;
         }
-
-
-        // echo '<pre>';
-
-        // print_r($parsed);
-        // print_r($keys);
-
-        // die;
 
 
         $this->bindingFields = array_merge(
@@ -320,50 +312,6 @@ abstract class Dispatch
     {
         return isset($this->action['domain'])
                 ? str_replace(['http://', 'https://'], '', $this->action['domain']) : null;
-    }
-
-
-    /**
-     * Set a regular expression requirement on the route.
-     *
-     * @param  array|string  $name
-     * @param  string|null  $expression
-     * @return $this
-     */
-    public function where($name, $expression = null)
-    {
-        foreach ($this->parseWhere($name, $expression) as $name => $expression) {
-            $this->wheres[$name] = $expression;
-        }
-
-        return $this;
-    }
-
-    /**
-     * Parse arguments to the where method into an array.
-     *
-     * @param  array|string  $name
-     * @param  string  $expression
-     * @return array
-     */
-    protected function parseWhere($name, $expression)
-    {
-        return is_array($name) ? $name : [$name => $expression];
-    }
-
-    /**
-     * Set a list of regular expression requirements on the route.
-     *
-     * @param  array  $wheres
-     * @return $this
-     */
-    public function setWheres(array $wheres)
-    {
-        foreach ($wheres as $name => $expression) {
-            $this->where($name, $expression);
-        }
-
-        return $this;
     }
 
     /**
@@ -445,21 +393,6 @@ abstract class Dispatch
              
             }
 
-            // echo '<pre>';
-
-            // print_r($this->route);
-            
-            // $var = [
-            //     $this->handler($this->route['middleware']['middleware'], $this->route['middleware']['namespace']),
-            //     $this->action($this->route['middleware']['middleware']),
-            // ];
-
-            // print_r($var);
-
-            // print_r(Reflector::isCallable($var, false));
-
-            // die;
-
             if (is_callable($this->route['handler'])) {
                 call_user_func($this->route['handler'], ($this->route['data'] ?? []));
                 return true;
@@ -475,26 +408,21 @@ abstract class Dispatch
                 if (is_callable($middleware['handler'])) {
                     call_user_func($middleware['handler'], ($this->route['data'] ?? []));
                 }
-
                 
                 $controller = $middleware['handler'];
                 $method = $middleware['action'];
-                
-                if (is_object($middleware['handler'])) {
-                    $controller->$method(($this->route['data'] ?? []));
-                    //call_user_func($middleware['handler'], ($this->route['data'] ?? []));
-                }else{
 
-                    if (class_exists($controller)) {
-                        if ($this->initClass($controller , $method)) {
-                        }else{
-                            $this->error = self::METHOD_NOT_ALLOWED;
-                            return false;
-                        }
+                if (class_exists($controller)) {
+                    $newController = new $controller($this);
+                    if (method_exists($controller, $method)) {
+                        $newController->$method(($this->route['data'] ?? []));
                     }else{
-                        $this->error = self::BAD_REQUEST;
+                        $this->error = self::METHOD_NOT_ALLOWED;
                         return false;
                     }
+                }else{
+                    $this->error = self::BAD_REQUEST;
+                    return false;
                 }
                 //$middleware = $this->handler($this->route['middleware'], $this->route[]);
 
@@ -503,18 +431,10 @@ abstract class Dispatch
             $controller = $this->route['handler'];
             $method = $this->route['action'];
 
-            if (is_object($controller)) {
-                if ($this->initClass($controller , $method)) {
-                    return true;
-                }
-                $this->error = self::METHOD_NOT_ALLOWED;
-                return false;
-                //call_user_func($middleware['handler'], ($this->route['data'] ?? []));
-            }
-
-
             if (class_exists($controller)) {
-                if ($this->initClass($controller , $method)) {
+                $newController = new $controller($this);
+                if (method_exists($controller, $method)) {
+                    $newController->$method(($this->route['data'] ?? []));
                     return true;
                 }
                 $this->error = self::METHOD_NOT_ALLOWED;
@@ -526,18 +446,6 @@ abstract class Dispatch
         }
         $this->error = self::NOT_FOUND;
         return false;
-    }
-
-
-    private function initClass($controller , $method){
-        $newController = new $controller($this);
-        if (method_exists($controller, $method)) {
-            $newController->$method(($this->route['data'] ?? []));
-            return true;
-        }
-        $this->error = self::METHOD_NOT_ALLOWED;
-        return false;
-
     }
 
     /**
