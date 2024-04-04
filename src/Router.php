@@ -207,7 +207,7 @@ class Router extends Dispatch
      * @param  string  $controller
      * @param  array  $options
      */
-    public function apiResource($name, $controller, array $options = [])
+    public function apiResource($name, $controller, ?array $options = [])
     {
         $this->Dispatch->apiResource($name,  $controller,$options);
         return $this->Dispatch;

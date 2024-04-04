@@ -113,6 +113,30 @@ class Dispatch
      */
     public $verbs = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
 
+    private $padraoApiRecourse = [];
+
+    private $only = [];
+
+    /*
+
+    case 'home':
+        $this->addRoute("GET", $name, $controller.$this->separator.$only);
+        break;
+    case 'create':
+        $this->addRoute(["GET","POST"], $name.'/'.$only, $controller.$this->separator.$only);
+        break;
+    case 'show':
+        $this->addRoute(["GET"], $name.'/{uid}', $controller.$this->separator.$only);
+        break;
+    case 'edit':
+        $this->addRoute(["PUT",'PATCH'], $name.'/{uid}/'.$only, $controller.$this->separator.$only);
+        break;
+    case 'destroy':
+        $this->addRoute(['DELETE'], $name.'/{uid}', $controller.$this->separator.$only);
+        break;
+
+        */
+
     /**
      * Dispatch constructor.
      *
@@ -126,6 +150,64 @@ class Dispatch
         $this->separator = ($separator ?? ":");
         $this->httpMethod = $_SERVER['REQUEST_METHOD'];
         $this->action['domain'] = [];
+        $this->PadraoApiRecourse();
+
+    }
+
+    public function getPadraoApiRecourse(){
+        return $this->padraoApiRecourse;
+    }
+
+    public function setPadraoApiRecourse(?array $dados = []){
+        if(!empty($dados)){
+            foreach($dados as $padrao){
+                if(!empty($padrao['action'])){
+                    $this->padraoApiRecourse[] = [
+                        'path' => ((!empty($padrao['path'])) ? $padrao['path'] : '/'),
+                        'action' => $padrao['action'],
+                        'metodo' => ((!empty($padrao['action'])) ? $padrao['action'] : $this->verbs),
+                    ];
+                }
+            }
+        }
+        return $this;
+    }
+
+    public function PadraoApiRecourse(){
+        $this->only = ['home','create','show','edit','update','destroy'];
+
+        $this->padraoApiRecourse = [
+            [
+                'path' => '/home',
+                'action' => 'home',
+                'metodo' => ['GET'],
+            ],
+            [
+                'path' =>  '/create',
+                'action' => 'create',
+                'metodo' => ["GET","POST"],
+            ],
+            [
+                'path' =>  '/{uid}/ficha',
+                'action' => 'show',
+                'metodo' => ["GET"],
+            ],
+            [
+                'path' =>  '/{uid}/edit',
+                'action' => 'edit',
+                'metodo' => ["GET"],
+            ],
+            [
+                'path' =>  '/{uid}/update',
+                'action' => 'update',
+                'metodo' => ["PUT",'PATCH'],
+            ],
+            [
+                'path' =>  '/{uid}/delete',
+                'action' => 'destroy',
+                'metodo' => ['DELETE'],
+            ],
+        ];
     }
 
     /**
@@ -183,24 +265,12 @@ class Dispatch
 
         return $this;
     }
-    
-    /*
-    public function map(string $method, string $path, $handler, string $name = null)
-    {
-        $path  = sprintf('/%s', ltrim($path, '/'));
-        $this->addRoute($method, $path, $handler, $name);
-        return $this;
-    }
-    */
-
-
 
     /**
      * Register a new route responding to all verbs.
      *
      * @param  string  $uri
      * @param  array|string|callable|object|null  $action
-     * @return \Illuminate\Routing\Route
      */
     public function any($uri, $action = null)
     {
@@ -270,28 +340,14 @@ class Dispatch
      */
     public function resource($name, $controller, array $options = [])
     {
-        if(!empty($options['only'])){
-            foreach($options['only'] as $only){
-                switch($only){
-                    case 'home':
-                        $this->addRoute("GET", $name, $controller.$this->separator.$only);
-                        break;
-                    case 'create':
-                        $this->addRoute(["GET","POST"], $name.'/'.$only, $controller.$this->separator.$only);
-                        break;
-                    case 'show':
-                        $this->addRoute(["GET"], $name.'/{uid}', $controller.$this->separator.$only);
-                        break;
-                    case 'edit':
-                        $this->addRoute(["PUT",'PATCH'], $name.'/{uid}/'.$only, $controller.$this->separator.$only);
-                        break;
-                    case 'destroy':
-                        $this->addRoute(['DELETE'], $name.'/{uid}', $controller.$this->separator.$only);
-                        break;
+
+        if(!empty($this->padraoApiRecourse)){
+            foreach($this->padraoApiRecourse as $padrao){
+                if(in_array($padrao["action"], $options['only'])){
+                    $this->addRoute($padrao['metodo'], $name.$padrao['path'], $controller.$this->separator.$padrao['action']);
                 }
             }
         }
-        
     }
 
     /**
@@ -314,11 +370,10 @@ class Dispatch
      * @param  string  $name
      * @param  string  $controller
      * @param  array  $options
-     * @return \Illuminate\Routing\PendingResourceRegistration
      */
-    public function apiResource($name, $controller, array $options = [])
+    public function apiResource($name, $controller, ?array $options = [])
     {
-        $only = ['home','create','show','edit','update','destroy'];
+        $only = $this->only;
 
         if (isset($options['except'])) {
             $only = array_diff($only, (array) $options['except']);

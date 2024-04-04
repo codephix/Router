@@ -237,7 +237,7 @@ class Route
      * @param  string  $controller
      * @param  array  $options
      */
-    public static function apiResource($name, $controller, array $options = [])
+    public static function apiResource($name, $controller, ?array $options = [])
     {
         self::$Dispatch->apiResource($name,  $controller,$options);
         return self::$Dispatch;
