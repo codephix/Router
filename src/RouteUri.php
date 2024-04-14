@@ -48,16 +48,18 @@ class RouteUri
      * @param  string  $uri
      * @return static
      */
-    public static function parse($uri)
+    public static function parse($uri = '')
     {
+
+        if(empty($uri)){
+            return new static($uri, []);
+        }
 
         $bindingFields = [];
         
         preg_match_all("~\{\s* ([a-zA-Z_][a-zA-Z0-9_-]*) \}~x", $uri, $keys, PREG_SET_ORDER);
         if(!empty($keys)){
-
             $routeDiff = array_values(array_diff(explode("/", self::$domain), explode("/", $uri)));
-
             $route = str_replace('//','/',$uri);
 
             $Epatch = explode(".", self::$domain);
@@ -68,16 +70,20 @@ class RouteUri
             foreach ($keys as $key) {
                 $bindingFields[$key[1]] = ($routeDiff[$offset++] ?? null);
             }
-            
+            $dominio = [];
             foreach($keys as $key2 => $p2){
                 if(!empty($Eroute)){
                     foreach($Eroute as $k => $p){
                         if($p2[0] == $p){
                             $bindingFields[$p2[1]] = ((!empty($Epatch[$k])) ? $Epatch[$k] : '');
+                        }else{
+                            $dominio[] = $p;
                         }
                     }
                 }
             }
+
+            $uri = ((!empty($dominio)) ? implode('.',$dominio) : '' );
         }
 
         return new static($uri, $bindingFields);

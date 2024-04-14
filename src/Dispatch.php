@@ -467,15 +467,18 @@ class Dispatch
     public function map(?string $prefix, string $route = null, callable $group)
     {
         $groups = $this->group;
+
+
         if(!empty($prefix)){
-            $this->group = ($prefix ? $prefix.'/' : null).($route ? str_replace("/", "", $route) : null);
+            //$this->group = ($prefix ? $prefix.'/' : null).($route ? str_replace("/", "", $route) : null);
+            $this->group = ($prefix ? $prefix.'/' : null).($route ? $route : null);
         }else{
             // $this->group = ($route ? str_replace("/", "", $route) : null);
             $this->group = ($route ? $route : null);
         }
 
         $this->group = str_replace("//","/",$this->group);
-        
+
         $group($this);
 
         $this->group = $groups;
@@ -516,7 +519,6 @@ class Dispatch
                 $this->bindingFields, $parsed->bindingFields
             );
         }
-
         $groups = $this->group;
 
         if(!is_null($group)){
@@ -549,7 +551,7 @@ class Dispatch
     public function getAcessDomain()
     {
         return !empty($_SERVER['HTTP_HOST'])
-                ? str_replace(['http://', 'https://'], '', $_SERVER['HTTP_HOST']) : null;
+        ? RouteUri::parse(str_replace(['http://', 'https://'], '', $_SERVER['HTTP_HOST']))->uri : null;
     }
 
     /**
@@ -632,6 +634,10 @@ class Dispatch
             if(!empty($this->route['domain'])){
                 $allow = false;
                 foreach($this->route['domain'] as $domain){
+                    // echo '<pre>';
+                    // print_r($this->getAcessDomain());
+                    // die;
+
                     if($domain == $this->getAcessDomain()){
                         $allow = true;
                     }
@@ -640,10 +646,6 @@ class Dispatch
                     $this->error = self::NOT_FOUND;
                     return false;
                 }
-            }
-            if (is_callable($this->route['handler'])) {
-                call_user_func($this->route['handler'], ($this->route['data'] ?? []));
-                return true;
             }
             
             if($this->route['middleware']){
@@ -660,6 +662,10 @@ class Dispatch
                         return false;
                     }
                 }
+            }
+            if (is_callable($this->route['handler'])) {
+                call_user_func($this->route['handler'], ($this->route['data'] ?? []));
+                return true;
             }
 
             $controller = $this->route['handler'];

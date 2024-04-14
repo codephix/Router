@@ -60,7 +60,6 @@ trait RouterTrait
     public function addRoute(string|array $methods, string $route, $handler, string $name = null): void
     {
 
-
         if(!empty($this->controller) && is_string($handler)){
             $ex = explode($this->separator,$handler);
             if(!isset($ex[1])){
@@ -74,6 +73,7 @@ trait RouterTrait
             }
             return;
         }
+
         $method = (string) $methods;
 
         if (false === $this->isExtraConditionMatch()) {
@@ -100,6 +100,8 @@ trait RouterTrait
 
         preg_match_all("~\{\s* ([a-zA-Z_][a-zA-Z0-9_-]*) \}~x", $route, $keys, PREG_SET_ORDER);
         $routeDiff = array_values(array_diff(explode("/", $this->patch), explode("/", $route)));
+
+        $route = str_replace('//','/',$route);
 
         $Epatch = explode("/", $this->patch);
         $Eroute = explode("/", $route);

@@ -15,6 +15,7 @@ use ReflectionFunction;
 class Route
 {
     
+    /** @var Dispatch */
     private static $Dispatch;
 
     /**
