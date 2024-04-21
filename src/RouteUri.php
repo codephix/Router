@@ -25,6 +25,9 @@ class RouteUri
      */
     public static $domain;
 
+    public $dominioAtual;
+    public $dominio;
+
     /**
      * Create a new route URI instance.
      *
@@ -32,14 +35,42 @@ class RouteUri
      * @param  array  $bindingFields
      * @return void
      */
-    public function __construct(string $uri, ?array $bindingFields = [])
+    public function __construct(string $uri, ?array $bindingFields = [], ?bool $dominioAtual = false, ?string $dominio = '')
     {
         $this->uri = $uri;
         $this->bindingFields = $bindingFields;
+        $this->dominioAtual = $dominioAtual;
+        $this->dominio = $dominio;
 
+        $host = ((!empty($_SERVER['HTTP_HOST'])) ? $_SERVER['HTTP_HOST'] : ((!empty($_SERVER['SERVER_NAME'])) ? $_SERVER['SERVER_NAME'] : null));
 
-        self::$domain =  !empty($_SERVER['HTTP_HOST'])
-                ? str_replace(['http://', 'https://'], '', $_SERVER['HTTP_HOST']) : null;
+        self::$domain =  !empty($host) ? str_replace(['http://', 'https://'], '', $host) : null;
+    }
+
+    // Função para obter o subdomínio da URL
+    public static function getSubdomain() {
+        $host = $_SERVER['HTTP_HOST'];
+        $hostParts = explode('.', $host);
+        // if (count($hostParts) > 2) {
+        if (count($hostParts) > 2) {
+            return $hostParts[0];
+        }
+        return null;
+    }
+
+    // Função para verificar se o host é um subdomínio
+    public static function isSubdomain($host, $domain) {
+        // Domínio principal
+        // $domain = 'semna.com.br';
+        
+        $hostParts = explode('.', $host);
+        // if (count($hostParts) > 2) {
+
+        if (count($hostParts) < 2)
+            return null;
+
+        // Verifica se o host termina com o domínio principal
+        return (substr($host, -strlen($domain) - 1) === '.' . $domain);
     }
 
     /**
@@ -51,18 +82,26 @@ class RouteUri
     public static function parse($uri = '')
     {
 
+        $host = ((!empty($_SERVER['HTTP_HOST'])) ? $_SERVER['HTTP_HOST'] : ((!empty($_SERVER['SERVER_NAME'])) ? $_SERVER['SERVER_NAME'] : null));
+
+        $domain =  !empty($host) ? str_replace(['http://', 'https://'], '', $host) : null;
+        $dominio = $uri;
+
+        $dominioAtual = false;
         if(empty($uri)){
-            return new static($uri, []);
+            return new static($uri, [], $dominioAtual);
         }
 
         $bindingFields = [];
         
         preg_match_all("~\{\s* ([a-zA-Z_][a-zA-Z0-9_-]*) \}~x", $uri, $keys, PREG_SET_ORDER);
+
         if(!empty($keys)){
-            $routeDiff = array_values(array_diff(explode("/", self::$domain), explode("/", $uri)));
+
+            $routeDiff = array_values(array_diff(explode("/", $domain), explode("/", $uri)));
             $route = str_replace('//','/',$uri);
 
-            $Epatch = explode(".", self::$domain);
+            $Epatch = explode(".", $domain);
             $Eroute = explode(".", $route);
 
             $offset = 0;
@@ -70,6 +109,7 @@ class RouteUri
             foreach ($keys as $key) {
                 $bindingFields[$key[1]] = ($routeDiff[$offset++] ?? null);
             }
+            
             $dominio = [];
             foreach($keys as $key2 => $p2){
                 if(!empty($Eroute)){
@@ -82,10 +122,20 @@ class RouteUri
                     }
                 }
             }
-
-            $uri = ((!empty($dominio)) ? implode('.',$dominio) : '' );
+            $dominio = ((!empty($dominio)) ? implode('.',$dominio) : '' );
         }
 
-        return new static($uri, $bindingFields);
+        $allow = false;
+        if($dominio == $host){
+            $allow = true;
+        }else{
+            if (!empty($bindingFields) && self::isSubdomain($domain, $dominio)) {
+                $allow = true;
+            }elseif(!empty($bindingFields) && empty($dominio)){
+                $allow = true;
+            }
+        }
+
+        return new static($uri, $bindingFields, $allow, $dominio);
     }
 }

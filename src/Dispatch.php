@@ -228,12 +228,42 @@ class Dispatch
         return $this;
     }
 
+    public function user(callable|string|array $callable = null ): Dispatch{
+        if (method_exists($callable, 'handle')) {
+            $newController = new $callable;
+            $newController->handle(($this->route['data'] ?? []));
+            // return true;
+        }
+        return $this;
+    }
+
     /**
      * @param string|array|null $group
      * @return Dispatch
      */
     public function group(string|array|null $group, ?callable $callable = null): Dispatch
     {
+
+        // if(!is_string($group) && is_array($group) && empty($group['prefix'])){
+        //     echo 'asd';
+        //     return $this;
+        // }
+        
+        if(!empty($group) && is_array($group) && !empty($group['domain'])){
+            if(is_array($group['domain'])){
+                foreach($group['domain'] as $domain){
+                    $parsed = RouteUri::parse($domain);
+                    if(empty($parsed->dominioAtual)){
+                        return $this;
+                    }
+                }
+            }else{
+                $parsed = RouteUri::parse($group['domain']);
+                if(empty($parsed->dominioAtual)){
+                    return $this;
+                }
+            }
+        }
 
         if(is_array($group)){
             if(!empty($group['prefix']) && is_string($group['prefix'])){
@@ -252,7 +282,9 @@ class Dispatch
 
         if(is_callable($callable)){
             $groupAtual = $this->group;
-            $this->group .= '/'.($group ? $group : null);
+            
+
+            $this->group .= '/'.((is_array($group) && !empty($group['prefix'])) ? $group['prefix'] : ( is_string($group) ? $group : null) ) ;
 
             $callable($this);
 
@@ -501,9 +533,22 @@ class Dispatch
             $this->action['domain'] = [];
         }
 
+
+        if(!empty($group) && is_array($group) && !empty($group['domain'])){
+            $parsed = RouteUri::parse($group['domain']);
+            if(empty($parsed->dominioAtual)){
+                return $this;
+            }
+        }
+
+        $alow = false;
         if(is_array($domains)){
             foreach($domains as $domain){
                 $parsed = RouteUri::parse($domain);
+                if(empty($parsed->dominioAtual)){
+                    continue;
+                }
+                $alow = true;
                 $this->action['domain'][] = $parsed->uri;
                 if(!empty($parsed->bindingFields)){
                     $this->bindingFields = array_merge(
@@ -513,12 +558,21 @@ class Dispatch
             }
         }else{
             $parsed = RouteUri::parse($domains);
+            if(empty($parsed->dominioAtual)){
+                return $this;
+            }
+            $alow = true;
             $this->action['domain'][] = $parsed->uri;
 
             $this->bindingFields = array_merge(
                 $this->bindingFields, $parsed->bindingFields
             );
         }
+
+        if(empty($alow)){
+            return $this;
+        }
+
         $groups = $this->group;
 
         if(!is_null($group)){
@@ -631,13 +685,10 @@ class Dispatch
         
         if ($this->route) {
 
+            /*
             if(!empty($this->route['domain'])){
                 $allow = false;
                 foreach($this->route['domain'] as $domain){
-                    // echo '<pre>';
-                    // print_r($this->getAcessDomain());
-                    // die;
-
                     if($domain == $this->getAcessDomain()){
                         $allow = true;
                     }
@@ -647,6 +698,7 @@ class Dispatch
                     return false;
                 }
             }
+            */
             
             if($this->route['middleware']){
                 if(is_array($this->route['middleware']['middleware'])){
@@ -663,6 +715,7 @@ class Dispatch
                     }
                 }
             }
+            
             if (is_callable($this->route['handler'])) {
                 call_user_func($this->route['handler'], ($this->route['data'] ?? []));
                 return true;

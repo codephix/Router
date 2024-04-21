@@ -42,22 +42,21 @@ class Route
     /**
      * @param null|string $group
      */
+    public static function user($handler = null )
+    {
+        self::$Dispatch->user($handler);
+        return self::$Dispatch;
+    }
+
+    /**
+     * @param null|string $group
+     */
     public static function group(string|array|null $group, $handler = null )
     {
-        // if(is_string($group) && !is_callable($handler)){
-        //     self::$Dispatch->group($group, $handler);
-        // }else if(is_string($group) && is_callable($handler)){
-        //     self::$Dispatch->group($group, $handler);
-        // }else if(is_array($group)){
-
-        //     if(!empty($group['prefix']) && is_string($group['prefix'])){
-        //         self::$Dispatch->group($group['prefix'], $handler);
-        //     }
-            
-        // }
         self::$Dispatch->group($group, $handler);
         return self::$Dispatch;
     }
+
     /**
      * @param null|string $group
      */
