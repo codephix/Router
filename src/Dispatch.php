@@ -558,6 +558,7 @@ class Dispatch
             }
         }else{
             $parsed = RouteUri::parse($domains);
+
             if(empty($parsed->dominioAtual)){
                 return $this;
             }
@@ -725,7 +726,7 @@ class Dispatch
             $method = $this->route['action'];
 
             if (class_exists($controller)) {
-                $newController = new $controller($this);
+                $newController = new $controller($this->route);
                 if (method_exists($controller, $method)) {
                     $newController->$method(($this->route['data'] ?? []));
                     return true;

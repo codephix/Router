@@ -15,7 +15,7 @@ use ReflectionFunction;
 class Route
 {
     
-    /** @var Dispatch */
+    /** @var Router */
     private static $Dispatch;
 
     /**
@@ -26,7 +26,7 @@ class Route
      */
     public static function init(string $projectUrl, ?string $separator = ":")
     {
-       self::$Dispatch = new Dispatch($projectUrl, $separator);
+       self::$Dispatch = new Router($projectUrl, $separator);
        return self::$Dispatch;
     }
 
@@ -244,7 +244,6 @@ class Route
     }
 
     public static function dispatch(){
-
         self::$Dispatch->dispatch();
     }
 
@@ -263,11 +262,9 @@ class Route
         */
         if (self::$Dispatch->error()) {
             $data = [
-                'errcode' => self::$Dispatch->error(),
+                'errocode' => self::$Dispatch->error(),
             ];
-            
             die;
         }
     }
-
 }
