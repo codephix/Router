@@ -247,7 +247,9 @@ class Route
         self::$Dispatch->dispatch();
     }
 
-
+    public static function getDataError(){
+        return self::$Dispatch->dataError();
+    }
     public static function error(){
         /**
         * ERROR REDIRECT
@@ -262,7 +264,7 @@ class Route
         */
         if (self::$Dispatch->error()) {
             $data = [
-                'errocode' => self::$Dispatch->error(),
+                'errcode' => self::$Dispatch->error(),
             ];
             die;
         }

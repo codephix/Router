@@ -34,6 +34,9 @@ class Dispatch
     /** @var null|array */
     protected $data;
 
+    /** @var null|array */
+    protected $dataError;
+
     /** @var int */
     protected $error;
 
@@ -649,6 +652,14 @@ class Dispatch
     {
         return $this->data;
     }
+    
+    /**
+     * @return null|array
+     */
+    public function dataError(): ?array
+    {
+        return ['data' => $this->dataError];
+    }
 
     /**
      * @return null|int
@@ -754,6 +765,7 @@ class Dispatch
             $this->data = $post;
 
             unset($this->data["_method"]);
+            $this->dataError = $this->data;
             return;
         }
 
@@ -761,6 +773,7 @@ class Dispatch
             $this->data = filter_input_array(INPUT_POST, FILTER_DEFAULT);
 
             unset($this->data["_method"]);
+            $this->dataError = $this->data;
             return;
         }
 
@@ -769,6 +782,7 @@ class Dispatch
             $this->data = $putPatch;
 
             unset($this->data["_method"]);
+            $this->dataError = $this->data;
             return;
         }
 

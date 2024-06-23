@@ -134,6 +134,8 @@ trait RouterTrait
             );
         }
 
+        $this->dataError = $data;
+
         $router = function () use ($method, $handler, $data, $route, $name, $namespace) {
             return [
                 "route" => $route,
