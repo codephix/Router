@@ -129,12 +129,10 @@ class RouteUri
         if($dominio == $host){
             $allow = true;
         }else{
-
-            if (!empty($bindingFields) && !empty($dominio) && self::isSubdomain($domain, $dominio)) {
+            if (!empty($bindingFields) && self::isSubdomain($domain, $dominio)) {
                 $allow = true;
             }elseif(!empty($bindingFields) && empty($dominio)){
                 $allow = true;
-                $bindingFields[$keys[0][1]] = $domain;
             }
         }
 

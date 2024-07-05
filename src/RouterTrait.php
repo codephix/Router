@@ -206,5 +206,4 @@ trait RouterTrait
         $params = (!empty($params) ? "?" . http_build_query($params) : null);
         return str_replace(array_keys($arguments), array_values($arguments), $route) . "{$params}";
     }
-    
 }
