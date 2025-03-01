@@ -124,14 +124,18 @@ trait RouterTrait
                 }
             }
         }
-        
+
         $data = $this->data;
         $namespace = $this->namespace;
 
         if(!empty($this->bindingFields)){
-            $data = array_merge(
-                $data, $this->bindingFields
-            );
+            if(empty($data)){
+                $data = $this->bindingFields;
+            }else{
+                $data = array_merge(
+                    $data, $this->bindingFields
+                );
+            }
         }
 
         $this->dataError = $data;
@@ -206,4 +210,5 @@ trait RouterTrait
         $params = (!empty($params) ? "?" . http_build_query($params) : null);
         return str_replace(array_keys($arguments), array_values($arguments), $route) . "{$params}";
     }
+
 }
