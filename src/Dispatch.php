@@ -100,7 +100,7 @@ class Dispatch
      * @var array
      */
     public $action;
-    
+
     /**
      * The fields that implicit binding should use for a given parameter.
      *
@@ -251,7 +251,7 @@ class Dispatch
         //     echo 'asd';
         //     return $this;
         // }
-        
+
         if(!empty($group) && is_array($group) && !empty($group['domain'])){
             if(is_array($group['domain'])){
                 foreach($group['domain'] as $domain){
@@ -285,7 +285,7 @@ class Dispatch
 
         if(is_callable($callable)){
             $groupAtual = $this->group;
-            
+
 
             $this->group .= '/'.((is_array($group) && !empty($group['prefix'])) ? $group['prefix'] : ( is_string($group) ? $group : null) ) ;
 
@@ -418,7 +418,7 @@ class Dispatch
             'only' => $only,
         ], $options));
     }
-    
+
 
     public function controller(string $controller, ?callable $action = null){
 
@@ -433,7 +433,7 @@ class Dispatch
 
 
         $groups = $this->group;
-     
+
         if(!is_null($action)){
             $action($this);
         }
@@ -459,7 +459,7 @@ class Dispatch
         ];
 
         $groups = $this->group;
-        
+
         if(!is_null($action)){
             $action($this);
         }
@@ -479,14 +479,14 @@ class Dispatch
         if (is_callable($middleware['handler'])) {
             call_user_func($middleware['handler'], ($this->route['data'] ?? []));
         }
-        
+
         $controller = $middleware['handler'];
         $method = $middleware['action'];
         if (class_exists($controller)) {
             /**
              * @var \Closure $newController
              */
-            $newController = new $controller($this);
+            $newController = new $controller($this->route);
             if (method_exists($controller, $method)) {
                 $newController->$method(($this->route['data'] ?? []));
             }else{
@@ -498,7 +498,7 @@ class Dispatch
             return true;
         }
     }
-    
+
     public function map(?string $prefix, string $route = null, callable $group)
     {
         $groups = $this->group;
@@ -651,7 +651,7 @@ class Dispatch
     {
         return $this->data;
     }
-    
+
     /**
      * @return null|array
      */
@@ -693,7 +693,7 @@ class Dispatch
      */
     private function execute()
     {
-        
+
         if ($this->route) {
 
             /*
@@ -710,7 +710,7 @@ class Dispatch
                 }
             }
             */
-            
+
             if($this->route['middleware']){
                 if(is_array($this->route['middleware']['middleware'])){
                     foreach($this->route['middleware']['middleware'] as $middleware){
@@ -726,7 +726,7 @@ class Dispatch
                     }
                 }
             }
-            
+
             if (is_callable($this->route['handler'])) {
                 call_user_func($this->route['handler'], ($this->route['data'] ?? []));
                 return true;
@@ -736,7 +736,7 @@ class Dispatch
             $method = $this->route['action'];
 
             if (class_exists($controller)) {
-                $newController = new $controller($this);
+                $newController = new $controller($this->route);
                 if (method_exists($controller, $method)) {
                     $newController->$method(($this->route['data'] ?? []));
                     return true;
