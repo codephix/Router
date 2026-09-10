@@ -157,6 +157,12 @@ class Dispatch
 
     }
 
+
+    public function setOnly(array $padrao = ['home','create','show','edit','editar','update','destroy']){
+        $this->only = $padrao;
+        return $this;
+    }
+
     public function getPadraoApiRecourse(){
         return $this->padraoApiRecourse;
     }

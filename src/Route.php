@@ -14,7 +14,7 @@ use ReflectionFunction;
  */
 class Route
 {
-    
+
     /** @var Dispatch */
     private static $Dispatch;
 
@@ -81,6 +81,19 @@ class Route
         //return $this;
         return self::$Dispatch;
     }
+    /**
+     * Register an array of API resource controllers.
+     *
+     * @param array $resources
+     * @param array $options
+     * @return void
+     */
+    public static function setOnly(array $resources, array $options = [])
+    {
+        self::$Dispatch->setOnly($resources, $options);
+        return self::$Dispatch;
+    }
+
 
     /**
      * @param string $route
@@ -141,7 +154,7 @@ class Route
         // return $this;
         return self::$Dispatch;
     }
-    
+
 
     /**
      * @param string $route
@@ -183,7 +196,7 @@ class Route
         self::$Dispatch->middleware($middleware,  $action, $namespace);
         return self::$Dispatch;
     }
-    
+
     public static function map(string|null $route, callable $group)
     {
         $prefix = ((!empty(self::$Dispatch->group)) ? self::$Dispatch->group : '');
@@ -212,7 +225,7 @@ class Route
      * @return \Illuminate\Routing\PendingResourceRegistration
      */
     public static function resource($name, $controller, array $options = [])
-    {   
+    {
         self::$Dispatch->resource($name, $controller, $options);
         return self::$Dispatch;
     }
@@ -267,7 +280,7 @@ class Route
             $data = [
                 'errcode' => self::$Dispatch->error(),
             ];
-            
+
             die;
         }
     }
