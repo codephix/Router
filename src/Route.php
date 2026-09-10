@@ -96,6 +96,20 @@ class Route
 
 
     /**
+     * Register an array of API resource controllers.
+     *
+     * @param array $resources
+     * @param array $options
+     * @return void
+     */
+    public static function setPadraoApiRecourse(array $resources, array $options = [])
+    {
+        self::$Dispatch->setPadraoApiRecourse($resources, $options);
+        return self::$Dispatch;
+    }
+
+
+    /**
      * @param string $route
      * @param $handler
      * @param string|null $name
